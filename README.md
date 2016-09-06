@@ -12,3 +12,4 @@ Notice the whole course has been seperated into **three parts**, the link above 
 ## Attention
 if you are taking this course now, **do not copy paste** the code from my solution directly, you will learn more by trying your best to finish all the homeworks.
 
+By the way, the "test.sml" is just the practice code in order to catch the current stream of course. I intensely recommend you to do the similar things during your learning process. 
