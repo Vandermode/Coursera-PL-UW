@@ -1,190 +1,211 @@
-(* test for Week3 lecture *)
+(* practice during class *)
 
-datatype mytype = 
-    TwoInts of int * int 
-    | Str of string
-    | Pizza
+fun double x = x + x
 
-fun f(x : mytype) =
-    case x of
-        Pizza => 3
-        | TwoInts(i1, i2) => i1 + i2
-        | Str(s) => String.size s
+fun increment x = x + 1
 
-datatype exp = 
-    Constant of int 
+(* first-order function *)
+fun n_times (f, n, x) =
+    if n = 0
+    then x
+    else f (n_times(f, n - 1, x))
+
+val x1 = n_times (double, 4, 7)
+val x2 = n_times (increment, 4, 7)
+val x3 = n_times (tl, 2, [4, 8, 12, 16])
+
+fun addition (n, x) = n_times (increment, n, x)
+
+fun double_n_times (n, x) = n_times (double, n, x)
+
+fun nth_tail (n, x) = n_times (tl, n, x)
+
+fun times_until_zero (f, x) = 
+    let fun aux (x, n) = 
+        if x = 0 then 0 else aux (f x, n + 1)
+    in
+        aux (x, 0)
+    end
+
+(* Anonymous function *)
+fun triple_n_times (n, x) = 
+    n_times ((fn x => 3 * x), n, x)
+
+(* fun binding is syntactic sugar *)
+(* fun triple x = x * 3 *)
+(* val triple = fn x => 3 * x *)
+
+val rev = List.rev
+
+(* Map and Filter *)
+fun map (f, xs) =
+    let fun aux ([], done) = done
+        | aux (x :: xs', done) = aux (xs', done @ [f x])
+    in
+        aux (xs, [])
+    end
+
+val x4 = map ((fn x => x + 2), [4, 8, 12, 16])
+
+val x5 = map (hd, [[1, 2], [3, 4]])
+
+fun filter (f, xs) =
+    let fun aux ([], done) = done
+        | aux (x :: xs', done) = if f x then aux (xs', done @ [x]) else aux (xs', done)
+    in
+        aux (xs, [])
+    end
+
+fun all_even xs = filter (fn x => x mod 2 = 0, xs)
+
+datatype exp =
+    Constant of int
     | Negate of exp
     | Add of exp * exp
     | Multiply of exp * exp
 
-fun old_eval(e : exp) =
-    case e of
-        Constant i => i
-        | Negate e => ~ (old_eval e)
-        | Add(e1, e2) => (old_eval e1) + (old_eval e2)
-        | Multiply(e1, e2) => (old_eval e1) * (old_eval e2)
+fun true_all_constants (f, Constant i) =  f i
+    | true_all_constants (f, Negate e) = true_all_constants (f, e)
+    | true_all_constants (f, Add (e1, e2)) = true_all_constants (f, e1) andalso true_all_constants (f, e2)
+    | true_all_constants (f, Multiply (e1, e2)) = true_all_constants (f, e1) andalso true_all_constants (f, e2)
 
-fun eval (Constant i) = i
-    | eval (Negate e) = ~ (eval e)
-    | eval (Add (e1, e2)) = (eval e1) + (eval e2)
-    | eval (Multiply (e1, e2)) = (eval e1) * (eval e2)
+fun all_even_constants e = true_all_constants (fn x => x mod 2 = 0, e)
 
-fun numbers_of_add(e : exp) = 
-    case e of
-        Constant i => 0
-        | Negate e => numbers_of_add e
-        | Add(e1, e2) => 1 + numbers_of_add e1 + numbers_of_add e2
-        | Multiply(e1, e2) => numbers_of_add e1 + numbers_of_add e2
+(* lexical scope *)
+fun greaterThanx x = fn y => y > x
 
-fun max_constant e =
-    let fun max_of_two(e1, e2) =
-        let val m1 = max_constant e1
-            val m2 = max_constant e2
-        in Int.max(m1, m2) end
+fun noNegatives xs = filter (greaterThanx ~1, xs)
+
+fun allGreater (xs, n) = filter (fn x => x > n, xs)
+
+fun allShorterThan1 (xs, s) =
+    filter (fn x => String.size x < (print "!"; String.size s), xs)
+
+fun allShorterThan2 (xs, s) =
+    let val i = (print "!"; String.size s)
     in
-        case e of
-            Constant i => i
-            | Negate e => max_constant e
-            | Add(e1, e2) => max_of_two(e1, e2)
-            | Multiply(e1, e2) => max_of_two(e1, e2)
+        filter (fn x => String.size x < i, xs)
     end
 
-datatype my_int_list =
-    Empty
-    | Cons of int * my_int_list
+(* acc : accumulator *)
+(* also called reduce *)
+fun fold (f, acc, []) = acc
+    | fold (f, acc, x :: xs) = fold (f, f (acc, x), xs)
 
-fun append_my_list(xs, ys) =
-    case xs of
-        Empty => ys
-        | Cons(x, xs') => Cons(x, append_my_list(xs', ys))
+fun sum xs = fold (fn (x, y) => x + y, 0, xs)
 
-fun inc_or_zero int_option =
-    case int_option of
-        NONE => 0
-        | SOME i => i + 1
+fun all xs = fold (fn (x, y) => x andalso y >= 0, true, xs)
 
-fun sum_list xs =
-    case xs of
-        [] => 0
-        | x :: xs' => x + sum_list(xs')
+fun any xs = fold (fn (x, y) => x orelse y >= 0, false, xs)
 
-fun append(xs, ys) =
-    case xs of
-        [] => ys
-        | x :: xs' => x :: append(xs', ys)
+fun range_count (xs, lo, hi) = fold (fn (x, y) => x + (if y >= lo andalso y <= hi then 1 else 0), 0, xs)
 
-datatype 'a my_option =  
-    None 
-    | Some of 'a
-
-datatype 'a linked_list = 
-    EmptyNode
-    | LinkedNode of 'a * ('a linked_list)
-
-datatype ('a, 'b) tree = 
-    TreeNode of 'a * ('a, 'b) tree * ('a, 'b) tree
-    | Leaf of 'b
-
-fun count_tree_node tree =
-    case tree of
-        Leaf _ => 1
-        | TreeNode(_, tree1, tree2) => 
-        1 + count_tree_node(tree1) + count_tree_node(tree2)
-
-fun sum_tree tree =
-    case tree of
-        Leaf i => i
-        | TreeNode(i, ltr, rtr) => i + sum_tree(ltr) + sum_tree(rtr)
-
-fun sum_leaf tree =
-    case tree of
-        Leaf i => i
-        | TreeNode(_, ltr, rtr) => sum_leaf(ltr) + sum_leaf(rtr)
-
-fun same_thing(x, y) =
-    if x = y then "yes" else "no"
-
-exception ListLengthMismatch
-
-fun zip3 list_triple = 
-    case list_triple of
-        ([], [], []) => []
-        | (hd1 :: tl1, hd2 :: tl2, hd3 :: tl3) => (hd1, hd2, hd3) :: zip3(tl1, tl2, tl3)
-        | _ => raise ListLengthMismatch
-
-fun unzip3 triple_list = 
-    case triple_list of
-         [] => ([], [], [])
-         | (a, b, c) :: tail => 
-         let val (l1, l2, l3) = unzip3 tail
-         in (a :: l1, b :: l2, c :: l3) end
-         (* the type of list is fixed, so '| _ =>' is redundant *)
-
-(* int list -> bool *)
-fun nondecreasing xs = 
-    case xs of
-        [] => true
-        | _ :: [] => true
-        | x1 :: (x2 :: rest) => x2 >= x1 andalso nondecreasing(x2 :: rest)
-
-datatype sgn = P | N | Z
-
-(* int * int -> sgn *)
-fun mult_sign(x1, x2) =
-    let fun sign(x) = if x = 0 then Z else if x > 0 then P else N
+fun is_all_shorter1 (ss, s) =
+    let val i = String.size s
     in
-        case (sign x1, sign x2) of
-            (_, Z) => Z
-            | (Z, _) => Z
-            | (P, P) => P
-            | (N, N) => P
-            | _ => N
+        fold (fn (x, y) => x andalso String.size y < i, true, ss)
     end
 
-fun maxlist (xs, ex) =
-    case xs of
-        [] => raise ex
-        | x :: [] => x
-        | x :: xs' => Int.max(x, maxlist(xs', ex))
+fun all_true (g, xs) =
+    fold (fn (x, y) => x andalso g y, true, xs)
 
-val test_handle = maxlist([], ListLengthMismatch)
-    handle ListLengthMismatch => ~1
-
-fun fact1 n = 
-    if n = 0 then 1 else n * fact1 (n - 1)
-
-(* tail recursion *)
-(* tail recursion do not need to maintain a series of stack *)
-fun fact2 n =
-    let fun aux (n, acc) = 
-        if n = 0 
-        then acc
-        else aux (n - 1, acc * n)
-    in aux(n, 1)
-    end
-
-(* tail recursion version of sum *)
-fun sum2 xs =
-    let fun tail_sum (xs, acc) =
-        case xs of
-            [] => acc
-            | x :: xs' => tail_sum(xs', acc + x)
+fun is_all_shorter2 (ss, s) = 
+    let val i = String.size s
     in
-        tail_sum(xs, 0)
+        all_true (fn s => String.size s < i, ss)
     end
 
-(* traditional version of reverse function *)
-fun rev xs = 
+(* closure idioms: Combining Functions *)
+fun compose (f, g) = 
+    fn x => f (g x)
+
+fun sqrt_of_abs1 i = Math.sqrt (Real.fromInt (abs i))
+
+val sqrt_of_abs2 = (Math.sqrt o Real.fromInt o abs) 
+
+infix !>
+
+fun x !> y = y x
+
+fun sqrt_of_abs3 i = i !> abs !> Real.fromInt !> Math.sqrt
+
+fun backup1 (f, g) = 
+    fn x =>
+    case f x of
+        NONE => g x
+        | SOME i => i
+
+fun backup2 (f, g) = fn x => f x handle _ => g x
+
+(* closure idiom: curring *)
+fun sorted3_tuple (x, y, z) = z >= y andalso y >= x
+
+val sorted3 = fn x => fn y => fn z => z >= y andalso y >= x
+
+val t = sorted3 3 4 5 = ((sorted3 3) 4) 5
+
+fun sorted3_nicer x y z = z >= y andalso y >= x
+
+fun fold_curring f acc xs = 
     case xs of
-        [] => []
-        | x :: xs' => rev (xs') @ [x]
+        [] => acc
+        | x :: xs' => fold_curring f (f (acc, x)) xs'
 
-(* tail version of rev *)
-fun rev2 xs =
-    let fun aux (xs, acc) =
-        case xs of
-            [] => acc
-            | x :: xs' => aux (xs', x :: acc)
-    in
-        aux (xs, [])
-    end
+val is_nonnegative = sorted3 0 0 
+
+val sum = fold_curring (fn (x, y) => x + y) 0 
+
+fun extend_range i j k = if i > j then k else extend_range (i + 1) j (k @ [i])
+
+fun range i j = extend_range i j []
+
+val countup = range 1
+
+fun exists predicate [] = false
+    | exists predicate (x :: xs) =
+        predicate x orelse exists predicate xs
+
+val has_zero = exists (fn x => x = 0)
+
+val increment_all = List.map (fn x => x + 1)
+
+val remove_zero = List.filter (fn x => x <> 0)
+
+(* val valueRestriction = List.map (fn x => (x, 1)) *)
+
+fun workaround xs = List.map (fn x => (x, 1)) xs
+
+(* curring wrapup *)
+fun curry f x y = f (x, y)
+
+fun uncurry f (x, y) = f x y
+
+val range_uncurry = uncurry range
+
+val test_curry = curry range_uncurry 1 10 = range 1 10
+
+(* callback *)
+val cbs : (int -> unit) list ref = ref []
+
+fun onKeyEvent f = cbs := f :: (!cbs)
+
+fun onEvent i =
+    let fun loop fs =
+        case fs of
+            [] => ()
+            | f :: fs' => (f i; loop fs')
+    in loop (!cbs) end
+
+val timePressed = ref 0
+val _ = onKeyEvent (fn _ => timePressed := (!timePressed) + 1)
+
+fun printIfPressed i =
+    onKeyEvent (fn j =>
+        if i = j
+        then print ("you pressed " ^ Int.toString i ^ "\n")
+        else ())
+
+val _ = printIfPressed 1
+val _ = printIfPressed 3
+val _ = printIfPressed 5
+

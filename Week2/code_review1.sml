@@ -1,146 +1,273 @@
-type date = int * int * int
+ (*Dan Grossman, Coursera PL, HW2 Provided Code*)
+
+(* if you use this function to compare two strings (returns true if the same
+   string), then you avoid several of the functions in problem 1 having
+   polymorphic types that may be confusing *)
+fun same_string(s1 : string, s2 : string) =
+    s1 = s2
+
+(* put your solutions for problem 1 here *)
+fun all_except_option(s, xs) =
+    case xs of
+        [] => NONE
+      | (x::[]) => if same_string (s, x) then SOME [] else NONE
+      | (x::xs') => if same_string (s, x) then SOME xs' else
+            let val xsoption = all_except_option (s, xs')
+            in
+                case xsoption of
+                    SOME xsoption' => SOME (x::xsoption')
+                  | NONE => NONE
+            end
 
 
-(* helpers *)
-
-fun days_per_month() =
-  [31, 28, 31,
-   30, 31, 30,
-   31, 31, 30,
-   31, 30, 31]
-
-fun leap_day(d : date) =
-  let
-    val y = #1 d
-    val m = #2 d
-    val is_leap_year = not (y mod 100 = 0) andalso (y mod 4 = 0 orelse y mod 400 = 0)
-  in
-    if m >= 2 andalso is_leap_year then 1 else 0
-  end
-
-fun sum(xs : int list) =
-  if null xs
-  then 0
-  else hd xs + sum(tl xs)
-
-fun take(xs: 'a list, n : int) =
-  if n = 0
-  then []
-  else hd xs::take(tl xs, n - 1)
-
-(* homework *)
-
-fun is_older(a : date, b : date) =
-  let
-    fun months_to_days(d: date) =
-      sum(take(days_per_month(), #2 d - 1)) + leap_day(d)
-    fun date_to_days(d: date) =
-      #1 d * 365 + months_to_days(d) + #3 d
-  in
-    date_to_days(a) < date_to_days(b)
-  end
-
-fun number_in_month(ds : date list, m : int) =
-  if null ds
-  then 0
-  else number_in_month(tl ds, m) + (if #2 (hd ds) = m then 1 else 0)
-
-fun number_in_months(ds : date list, ms : int list) =
-  if null ms
-  then 0
-  else number_in_month(ds, hd ms) + number_in_months(ds, tl ms)
-
-fun dates_in_month(ds : date list, m : int) =
-  if null ds
-  then []
-  else (if #2 (hd ds) = m then [hd ds] else []) @ dates_in_month(tl ds, m)
-
-fun dates_in_months(ds : date list, ms : int list) =
-  if null ms
-  then []
-  else dates_in_month(ds, hd ms) @ dates_in_months(ds, tl ms)
-
-fun get_nth(xs : 'a list, n : int) =
-  if n = 1
-  then hd xs
-  else get_nth(tl xs, n - 1)
-
-fun date_to_string(d : date) =
-  let
-    fun month_to_string(m : int) =
-      get_nth(["January", "February", "March",
-               "April",   "May",      "June",
-               "July",    "August",   "September",
-               "October", "November", "December"], m)
-  in
-    month_to_string(#2 d) ^ " " ^ Int.toString(#3 d) ^ ", " ^ Int.toString(#1 d)
-  end
-
-fun number_before_reaching_sum(sum : int, xs : int list) =
-  if sum <= 0
-  then ~1
-  else 1 + number_before_reaching_sum(sum - hd xs, tl xs)
-
-fun what_month(d : int) =
-  1 + number_before_reaching_sum(d, days_per_month())
-
-fun month_range(a : int, b : int) =
-  if a > b
-  then []
-  else what_month a :: month_range(a + 1, b)
-
-fun oldest(ds : date list) =
-  if null ds
-  then NONE
-  else
-    let
-      val tl_oldest = oldest (tl ds)
-    in
-      if isSome tl_oldest andalso is_older(valOf tl_oldest, hd ds)
-      then tl_oldest
-      else SOME (hd ds)
+fun get_substitutions1(lxs, s) =
+    let fun match_option(sopt) =
+        case sopt of NONE => [] | SOME sopt' => sopt'
+    in 
+        case lxs of
+            [] => []
+          | xs::lxs' => match_option (all_except_option (s, xs)) @ get_substitutions1 (lxs', s)
     end
 
 
-(* challenge problems *)
-
-fun contains(xs : int list, x : int) =
-  if null xs
-  then false
-  else if hd xs = x then true else contains(tl xs, x)
-
-fun uniq(xs : int list) =
-  if null xs
-  then []
-  else
-    let
-      fun iter(ys : int list, zs : int list) =
-        if null zs
-        then ys
-        else iter(if contains(ys, hd zs)
-          then ys
-          else ys @ [hd zs], tl zs)
+fun get_substitutions2(lxs, s) =
+    let fun match_option sopt = 
+        case sopt of NONE => [] | SOME sopt => sopt
+        fun aux(lxs, s, acc) = 
+            case lxs of
+                [] => acc
+              | xs::lxs' => aux (lxs', s, acc @ match_option (all_except_option (s, xs)))
     in
-      iter([], xs)
+        aux(lxs, s, [])
     end
 
-fun number_in_months_challenge(ds : date list, ms : int list) =
-  number_in_months(ds, uniq ms)
 
-fun dates_in_months_challenge(ds : date list, ms : int list) =
-  dates_in_months(ds, uniq ms)
+fun similar_names(names, full_name) =
+    let
+        fun match_name {first=f, last=l, middle=m} = f
+        fun make_record (name, {first=f, last=l, middle=m}) =
+            {first=name, last=l, middle=m}
+        (* extract the original name *)
+        val name = match_name full_name
+        (* extract all names *)
+        val substitutions = match_name full_name::(get_substitutions2 (names, name))
+        (* recursively make records out of them *)
+        fun make_records substitutions = 
+            case substitutions of
+                [] => []
+              | first::rest => make_record (first, full_name)::make_records rest
+    in
+        make_records substitutions
+    end
 
-fun reasonable_date(d : date) =
-  let
-    val year  = #1 d
-    val month = #2 d
-    val day   = #3 d
 
-    fun between(a : int, b : int, x : int) =
-      x >= a andalso x <= b
+(* you may assume that Num is always used with values 2, 3, ..., 10
+   though it will not really come up *)
+datatype suit = Clubs | Diamonds | Hearts | Spades
+datatype rank = Jack | Queen | King | Ace | Num of int 
+type card = suit * rank
 
-    fun days_for_month() =
-      get_nth(days_per_month(), month) + leap_day(d)
-  in
-    year > 0 andalso between(1, 12, month) andalso between(1, days_for_month(), day)
-  end
+datatype color = Red | Black
+datatype move = Discard of card | Draw 
+
+exception IllegalMove
+
+(*put your solutions for problem 2 here*)
+fun card_color card =
+    case card of
+        (Clubs, _) => Black
+      |  (Spades, _) => Black
+      | _ => Red
+
+
+fun card_value card =
+    case card of
+        (_, Num x) => x
+      | (_, Ace) => 11
+      | _ => 10
+
+
+fun remove_card(cs, c, e) =
+    let
+        fun remove_card_local(cs, c, e) =
+            case cs of
+                [] => []
+              | card::rest => if card=c then rest else card::remove_card_local (rest, c, e)
+        fun check_for_exception(cs, c, e) =
+            case cs of
+                [] => raise e
+              | card::rest => if card=c then true else check_for_exception (rest, c, e)
+        val has_card = check_for_exception (cs, c, e)
+        val result = remove_card_local (cs, c, e)
+    in
+        result
+    end
+
+
+fun all_same_color cs =
+    case cs of
+        [] => true
+      | card::[] => true
+      | card1::card2::rest => (card_color card1)=(card_color card2) andalso all_same_color (card2::rest)
+
+
+fun sum_cards cs =
+    let
+        fun sum_cards_recursive(cs, acc) =
+            case cs of
+                [] => acc
+              | c::rest => sum_cards_recursive (rest, acc+(card_value c))
+        val result = sum_cards_recursive (cs, 0)
+    in
+        result
+    end
+
+
+fun score(cs, goal) =
+    let 
+        val sum = sum_cards cs
+        val prelim_score = 
+            if sum > goal then 3 * (sum - goal)
+            else goal - sum
+    in
+        if all_same_color cs
+        then prelim_score div 2
+        else prelim_score
+    end
+
+
+fun officiate (cs, moves, goal) =
+    let
+        fun game_state (cs, moves, goal, held_cs) =
+            case moves of
+                [] => score (held_cs, goal)
+              | Discard c::rest => game_state (cs, rest, goal, remove_card (held_cs, c, IllegalMove))
+              | Draw::rest => 
+                case cs of
+                    [] => score (held_cs, goal)
+                  | c::cs' =>
+                    let 
+                        val held_cs' = (c::held_cs)
+                        val sum = sum_cards held_cs'
+                    in
+                        if sum > goal then score (held_cs', goal)
+                        else game_state (cs', rest, goal, held_cs')
+                    end
+    in
+        game_state (cs, moves, goal, [])
+    end
+
+
+val test_score = score ([(Hearts, Ace), (Spades, Num 9)],10)
+ 
+
+(*helper function to replace n aces with value 1*)
+fun replace_n_aces(cs, n) =
+    if n=0 then cs
+    else
+        (case cs of
+            (*seems to work without it, but gives non-exhaustive warning*)
+            [] => []
+          | (s, Ace)::cs' => (s, Num 1)::(replace_n_aces (cs', n - 1))
+          | c::cs' => c::(replace_n_aces (cs', n)))
+
+(*helper function to count aces in a hand*)
+fun count_aces cs =
+    case cs of
+        [] => 0
+      | (_, Ace)::cs' => 1 + (count_aces cs')
+      | _::cs' => count_aces cs'
+
+
+fun score_challenge (cs, goal) =
+    let
+        val regular_score = score (cs, goal)
+        val aces_count = count_aces cs
+        fun try_aces (aces_count, best_score) =
+            
+            if aces_count = 0 then best_score
+            else
+                let 
+                    val new_cards = replace_n_aces (cs, aces_count)
+                    val new_score = score (new_cards, goal)
+                in
+                    if new_score < best_score then try_aces (aces_count - 1, new_score)
+                    else try_aces (aces_count - 1, best_score)
+                end
+    in
+        try_aces (aces_count, regular_score)
+    end
+
+
+
+fun officiate_challenge(cs, moves, goal) = 
+    let
+        fun game_state (cs, moves, goal, held_cs) =
+            case moves of
+                [] => score_challenge (held_cs, goal)
+              | Discard c::rest => game_state (cs, rest, goal, remove_card (held_cs, c, IllegalMove))
+              | Draw::rest => 
+                case cs of
+                    [] => score_challenge (held_cs, goal)
+                  | c::cs' =>
+                    let 
+                        val held_cs' = (c::held_cs)
+                        val aces_count = count_aces held_cs'
+                        val sum = sum_cards (replace_n_aces (held_cs', aces_count))
+                    in
+                        if sum > goal then score_challenge (held_cs', goal)
+                        else game_state (cs', rest, goal, held_cs')
+                    end
+    in
+        game_state (cs, moves, goal, [])
+    end
+
+
+(*helper function to check if we can discard a card to get a zero*)
+(*there is probably a better way, append is ugly indeed*)
+fun to_discard(drawn_card, cs, goal) =
+    let 
+        fun to_discard_helper(explored, left) =
+            case left of
+                [] => NONE
+              | c::cs' => 
+                    if score (explored @ (drawn_card::cs'), goal)=0
+                    then SOME c else to_discard_helper (c::explored, cs')
+    in
+        to_discard_helper ([], cs)
+    end
+
+
+fun careful_player(cs, goal) =
+    let
+        fun actions_helper(cs, held_cs, actions) =
+            let
+                val current_value = sum_cards held_cs
+            in
+                if score (held_cs, goal) = 0 then actions
+                else if abs (current_value - goal) > 10
+                then 
+                    case cs of
+                        c::cs' => actions_helper (cs', c::held_cs, Draw::actions)
+                      | [] => actions
+                (*less than 11 left to goal*)
+                else
+                    case cs of
+                        c::cs' =>
+                            let 
+                                val candidate = to_discard (c, held_cs, goal)
+                                val sum = sum_cards (c::held_cs)
+                            in
+                                case candidate of
+                                    SOME card => actions_helper (
+                                        cs',
+                                        card::(remove_card (held_cs, card, IllegalMove)),
+                                        Draw::Discard card::actions
+                                    )
+                                  | _ => if sum <= goal then actions_helper (cs', c::held_cs, Draw::actions) else actions
+                            end
+                      | _ => actions
+            end
+    in
+        List.rev (actions_helper (cs, [], []))
+    end

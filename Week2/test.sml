@@ -1,170 +1,190 @@
-(* This is a comment. This is our first program.*)
+(* test for Week3 lecture *)
 
-val x = 34;
+datatype mytype = 
+    TwoInts of int * int 
+    | Str of string
+    | Pizza
 
-val y = 17;
+fun f(x : mytype) =
+    case x of
+        Pizza => 3
+        | TwoInts(i1, i2) => i1 + i2
+        | Str(s) => String.size s
 
-val z = (x + y) + (y + 2);
+datatype exp = 
+    Constant of int 
+    | Negate of exp
+    | Add of exp * exp
+    | Multiply of exp * exp
 
-val y = 18;
+fun old_eval(e : exp) =
+    case e of
+        Constant i => i
+        | Negate e => ~ (old_eval e)
+        | Add(e1, e2) => (old_eval e1) + (old_eval e2)
+        | Multiply(e1, e2) => (old_eval e1) * (old_eval e2)
 
-val q = z + 1;
+fun eval (Constant i) = i
+    | eval (Negate e) = ~ (eval e)
+    | eval (Add (e1, e2)) = (eval e1) + (eval e2)
+    | eval (Multiply (e1, e2)) = (eval e1) * (eval e2)
 
-val abs_of_z = if z < 0 then 0 - z else z;
+fun numbers_of_add(e : exp) = 
+    case e of
+        Constant i => 0
+        | Negate e => numbers_of_add e
+        | Add(e1, e2) => 1 + numbers_of_add e1 + numbers_of_add e2
+        | Multiply(e1, e2) => numbers_of_add e1 + numbers_of_add e2
 
-val abs_of_z_simpler = abs z;
-
-fun pow(x : int, exp : int) = 
-    if exp = 0
-    then 1
-    else x * pow(x, exp - 1)
-
-fun cube(x : int) = 
-    pow(x, 3)
-
-fun swap(pr : int * bool) = 
-    (#2 pr, #1 pr)
-
-fun sum_two_pairs(pr1 : int * int, pr2 : int * int) = 
-    (#1 pr1) + (#2 pr1) + (#1 pr2) + (#2 pr2)
-
-fun div_mod(x : int, y : int) = 
-    (x div y, x mod y)
-
-fun sort_pair(pr : int * int) = 
-    if (#1 pr) < (#2 pr)
-    then pr
-    else (#2 pr, #1 pr)
-
-fun sum_list(xs : int list) =
-    if null xs
-    then 0
-    else hd(xs) + sum_list(tl(xs))
-
-fun list_product(xs : int list) =
-    if null xs
-    then 0
-    else
-        if null (tl xs)
-        then hd xs
-        else hd xs * list_product(tl xs)
-
-fun countdown(x : int)  =
-    if x = 0
-    then []
-    else x :: countdown(x - 1)
-
-fun append(xs : int list, ys : int list) = 
-    if null xs
-    then ys
-    else hd xs :: append(tl xs, ys)
-
-fun sum_pair_list(xs : (int * int) list) = 
-    if null xs
-    then 0
-    else #1 (hd xs) + #2 (hd xs) + sum_pair_list(tl xs)
-
-fun firsts(xs : (int * int) list) = 
-    if null xs
-    then []
-    else #1 (hd xs) :: firsts(tl xs)
-
-fun seconds(xs : (int * int) list) =
-    if null xs
-    then []
-    else #2 (hd xs) :: seconds(tl xs)
-
-fun sum_pair_list2(xs : (int * int) list) = 
-    sum_list(firsts xs) + sum_list(seconds xs)
-
-fun factorial(n : int) = 
-    if n = 0
-    then 1
-    else n * factorial(n -1)
-
-fun factorial2(n : int) = 
-    list_product(countdown(n))    
-
-fun silly() = 
-    let
-        val x = 1
+fun max_constant e =
+    let fun max_of_two(e1, e2) =
+        let val m1 = max_constant e1
+            val m2 = max_constant e2
+        in Int.max(m1, m2) end
     in
-        (let val x = 2 in x + 1 end) + (let val y = x + 2 in y + 1 end)
+        case e of
+            Constant i => i
+            | Negate e => max_constant e
+            | Add(e1, e2) => max_of_two(e1, e2)
+            | Multiply(e1, e2) => max_of_two(e1, e2)
     end
 
-fun count(from : int, to : int) = 
-    if from = to
-    then to :: []
-    else from :: count(from + 1, to)
+datatype my_int_list =
+    Empty
+    | Cons of int * my_int_list
 
-fun countup_from1(x : int) =
-    let
-        fun count(from : int) = 
-            if from = x
-            then x :: []
-            else from :: count(from + 1)
+fun append_my_list(xs, ys) =
+    case xs of
+        Empty => ys
+        | Cons(x, xs') => Cons(x, append_my_list(xs', ys))
+
+fun inc_or_zero int_option =
+    case int_option of
+        NONE => 0
+        | SOME i => i + 1
+
+fun sum_list xs =
+    case xs of
+        [] => 0
+        | x :: xs' => x + sum_list(xs')
+
+fun append(xs, ys) =
+    case xs of
+        [] => ys
+        | x :: xs' => x :: append(xs', ys)
+
+datatype 'a my_option =  
+    None 
+    | Some of 'a
+
+datatype 'a linked_list = 
+    EmptyNode
+    | LinkedNode of 'a * ('a linked_list)
+
+datatype ('a, 'b) tree = 
+    TreeNode of 'a * ('a, 'b) tree * ('a, 'b) tree
+    | Leaf of 'b
+
+fun count_tree_node tree =
+    case tree of
+        Leaf _ => 1
+        | TreeNode(_, tree1, tree2) => 
+        1 + count_tree_node(tree1) + count_tree_node(tree2)
+
+fun sum_tree tree =
+    case tree of
+        Leaf i => i
+        | TreeNode(i, ltr, rtr) => i + sum_tree(ltr) + sum_tree(rtr)
+
+fun sum_leaf tree =
+    case tree of
+        Leaf i => i
+        | TreeNode(_, ltr, rtr) => sum_leaf(ltr) + sum_leaf(rtr)
+
+fun same_thing(x, y) =
+    if x = y then "yes" else "no"
+
+exception ListLengthMismatch
+
+fun zip3 list_triple = 
+    case list_triple of
+        ([], [], []) => []
+        | (hd1 :: tl1, hd2 :: tl2, hd3 :: tl3) => (hd1, hd2, hd3) :: zip3(tl1, tl2, tl3)
+        | _ => raise ListLengthMismatch
+
+fun unzip3 triple_list = 
+    case triple_list of
+         [] => ([], [], [])
+         | (a, b, c) :: tail => 
+         let val (l1, l2, l3) = unzip3 tail
+         in (a :: l1, b :: l2, c :: l3) end
+         (* the type of list is fixed, so '| _ =>' is redundant *)
+
+(* int list -> bool *)
+fun nondecreasing xs = 
+    case xs of
+        [] => true
+        | _ :: [] => true
+        | x1 :: (x2 :: rest) => x2 >= x1 andalso nondecreasing(x2 :: rest)
+
+datatype sgn = P | N | Z
+
+(* int * int -> sgn *)
+fun mult_sign(x1, x2) =
+    let fun sign(x) = if x = 0 then Z else if x > 0 then P else N
     in
-        count(1)   
+        case (sign x1, sign x2) of
+            (_, Z) => Z
+            | (Z, _) => Z
+            | (P, P) => P
+            | (N, N) => P
+            | _ => N
     end
 
-fun max_bad(xs : int list) =
-    if null xs
-    then 0
-    else if null(tl xs)
-        then hd xs
-        else if hd xs > max_bad(tl xs)
-            then hd xs
-            else max_bad(tl xs)
+fun maxlist (xs, ex) =
+    case xs of
+        [] => raise ex
+        | x :: [] => x
+        | x :: xs' => Int.max(x, maxlist(xs', ex))
 
-(* return [from, from + 1, ... to]*)
-fun count_up(from : int, to : int) = 
-    if from = to
-    then [to]
-    else from :: count_up(from + 1, to)
+val test_handle = maxlist([], ListLengthMismatch)
+    handle ListLengthMismatch => ~1
 
-(* return [from, from - 1, ... to]*)
-fun count_down(from : int, to : int) =
-    if from = to
-    then [to]
-    else from :: count_down(from - 1, to)
+fun fact1 n = 
+    if n = 0 then 1 else n * fact1 (n - 1)
 
-fun good_max(xs : int list) =
-    if null xs
-    then 0
-    else
-        let val tl_ans = good_max(tl xs)
-        in
-            if hd xs > tl_ans
-            then hd xs
-            else tl_ans
-        end
-
-(* fn : int list -> int option*)
-fun max1(xs : int list) = 
-    if null xs
-    then NONE
-    else let
-        val tl_ans = max1(tl xs)
-    in
-        if isSome tl_ans andalso valOf tl_ans > hd xs
-        then tl_ans
-        else SOME(hd xs)
+(* tail recursion *)
+(* tail recursion do not need to maintain a series of stack *)
+fun fact2 n =
+    let fun aux (n, acc) = 
+        if n = 0 
+        then acc
+        else aux (n - 1, acc * n)
+    in aux(n, 1)
     end
 
-fun max2(xs : int list) =
-    if null xs
-    then NONE
-    else let
-        fun max_nonempty(xs : int list) =
-            if null(tl xs)
-            then hd xs
-            else 
-                let val tl_ans = max_nonempty(tl xs)
-                in
-                    if hd xs > tl_ans
-                    then hd xs
-                    else tl_ans
-                end
-        in
-            SOME(max_nonempty xs)
+(* tail recursion version of sum *)
+fun sum2 xs =
+    let fun tail_sum (xs, acc) =
+        case xs of
+            [] => acc
+            | x :: xs' => tail_sum(xs', acc + x)
+    in
+        tail_sum(xs, 0)
+    end
+
+(* traditional version of reverse function *)
+fun rev xs = 
+    case xs of
+        [] => []
+        | x :: xs' => rev (xs') @ [x]
+
+(* tail version of rev *)
+fun rev2 xs =
+    let fun aux (xs, acc) =
+        case xs of
+            [] => acc
+            | x :: xs' => aux (xs', x :: acc)
+    in
+        aux (xs, [])
     end

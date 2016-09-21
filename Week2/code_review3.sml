@@ -1,223 +1,138 @@
+(* Dan Grossman, Coursera PL, HW2 Provided Code *)
 
-fun is_older (a : int * int * int, b : int * int * int) =
-  (* compare year *)
-  if (#1 a) < (#1 b)
-  then true
-  else if (#1 a) > (#1 b)
-       then false
-       (* compare month *)
-       else if (#2 a) < (#2 b)
-            then true
-            else if (#2 a) > (#2 b)
-                 then false
-     (* compare day *)
-                 else if (#3 a) < (#3 b)
-                      then true
-                      else false
+(* if you use this function to compare two strings (returns true if the same
+     string), then you avoid several of the functions in problem 1 having
+     polymorphic types that may be confusing *)
+fun same_string(s1 : string, s2 : string) =
+        s1 = s2
 
 
-fun number_in_month (dates: (int * int * int) list, month : int) =
-  if null dates
-  then 0
-  else      
-      let
-    fun isMonth(date: int*int*int)=
-      if (#2 date) = month
-      then 1
-      else 0
-      in
-    if null (tl dates)
-    then isMonth(hd dates)
-    else isMonth(hd dates) + number_in_month(tl dates, month)
-                
-      end
+(* put your solutions for problem 1 here *)
+fun all_except_option(element, xs) =
+        let fun all_except_helper(xs, acc) =
+                        case xs of
+                                [] => NONE
+                                | x::xs' => if same_string(x, element)
+                                                        then SOME (acc @ xs')
+                                                        else all_except_helper(xs', x::acc)
+        in
+                all_except_helper(xs, [])
+        end;
 
 
-fun number_in_months (dates: (int * int * int) list, months : int list) =
-  if null months
-  then 0
-  else number_in_month(dates, hd months) + number_in_months(dates, tl months)
+fun get_substitutions1([], _) = []
+    | get_substitutions1(x::xs, s) =
+                case all_except_option(s, x) of
+                            NONE => get_substitutions1(xs, s)
+                        | SOME ys => ys @ get_substitutions1(xs, s);
 
 
-fun dates_in_month (dates: (int * int * int) list, month : int) =
-  if null dates
-  then []
-  else
-      let
-    fun hasMonth(date : int * int * int) =
-      (#2 date) = month
-          
-      in
-    if null (tl dates)
-    then if hasMonth(hd dates)
-         then [hd dates]
-         else []
-      
-    else if hasMonth(hd dates)
-          then (hd dates) :: dates_in_month(tl dates, month)
-    else dates_in_month(tl dates, month)
-      end
+fun get_substitutions2(xs, s) =
+        let fun get_substitutions2_helper([], acc) = acc
+                    | get_substitutions2_helper(x::xs, acc) =
+                        case all_except_option(s, x) of
+                                NONE => get_substitutions2_helper(xs, acc)
+                                | SOME ys => get_substitutions2_helper(xs, acc @ ys)
+        in
+                get_substitutions2_helper(xs, [])
+        end;
 
 
-fun dates_in_months (dates: (int * int * int) list, months : int list) =
-  if null months
-  then []
-  else
-      if null dates
-      then []
-      else    
-    let
-        val has = dates_in_month(dates, hd months)
-        val next = dates_in_months(dates, tl months)
-          
-    in
-        if null has
-        then next
-        else has@next
-    end
-
-fun get_nth (dates : string list, n: int) =
-  if n = 1
-  then hd dates
-  else get_nth(tl dates, n - 1)
+fun similar_names(xss, fullname) =
+        let val {first:string, last:string, middle:string} = fullname
+                val simliar_firstnames = get_substitutions1(xss, first)
+                fun similar_names_acc(xs) =
+                        case xs of
+                                [] => []
+                                | x::xs' => {first=x, last=last, middle=middle} ::  similar_names_acc(xs')
+        in
+                fullname :: similar_names_acc(simliar_firstnames)
+        end;
 
 
-fun date_to_string (date:(int * int * int)) =
-  let val MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
-  in
-      get_nth(MONTHS, (#2 date)) ^ " " ^ Int.toString((#3 date)) ^ ", " ^ Int.toString((#1 date))
-  end
+(* you may assume that Num is always used with values 2, 3, ..., 10
+     though it will not really come up *)
+datatype suit = Clubs | Diamonds | Hearts | Spades
+datatype rank = Jack | Queen | King | Ace | Num of int
+type card = suit * rank
+
+datatype color = Red | Black
+datatype move = Discard of card | Draw
+
+exception IllegalMove
+
+(* put your solutions for problem 2 here *)
+fun card_color(suit, _) =
+        case suit of
+                    Spades => Black
+                | Clubs => Black
+                | Diamonds => Red
+                | Hearts => Red;
 
 
-fun number_before_reaching_sum (sum: int, num: int list) =
-  let fun nth_before_sum(sum: int, num: int list, nth: int) =
-  if sum <= 0
-  then nth - 1
-  else nth_before_sum(sum - (hd num), tl num, nth + 1)
-  in
-      nth_before_sum(sum, num, 0)
-  end
+fun card_value(_, rank) =
+        case rank of
+                Ace => 11
+                | King => 10
+                | Queen => 10
+                | Jack => 10
+                | Num i => i;
 
 
-fun what_month (day: int) =
-  let val NUM_DAYS = [31,28,31,30,31,30,31,31,30,31,30,31]
-  in
-      number_before_reaching_sum(day, NUM_DAYS)+1
-  end
-      
-
-fun month_range (day1: int, day2: int) =
-  if day1 > day2
-  then []
-  else what_month(day1)::month_range(day1 + 1, day2)
-      
-
-fun oldest (dates: (int * int * int) list) =
-  if null dates
-  then NONE
-  else
-      let
-    fun oldest_nonempty (dates: (int * int * int) list) =
-      if null (tl dates)
-      then hd dates
-      else
-    let val tl_oldest = oldest_nonempty(tl dates)
-    in
-        if is_older ( hd dates, tl_oldest)
-        then hd dates
-        else tl_oldest
-    end
-      in
-    SOME (oldest_nonempty(dates))
-      end
-
-    
-
-fun number_in_months_challenge (dates: (int * int * int) list, months : int list) =
-  let
-      fun notIn(i:int, uni: int list) =
-  if null uni
-  then true
-  else
-      if i = (hd uni)
-      then false
-      else true andalso notIn(i, tl uni)
-    
-      fun unique(x: int list) =
-  if null x
-  then []
-  else let val uni = unique(tl x)
-       in
-     if notIn(hd x, uni)
-     then (hd x)::uni
-     else uni
-       end
-     
-       
-  in
-      let val unique_month = unique(months)
-      in number_in_months(dates, unique_month)
-      end          
-  end
-      
-           
-         
-
-fun dates_in_months_challenge (dates: (int * int * int) list, months : int list) =
-  let
-      fun notIn(i:int, uni: int list) =
-  if null uni
-  then true
-  else
-      if i = (hd uni)
-      then false
-      else true andalso notIn(i, tl uni)
-    
-      fun unique(x: int list) =
-  if null x
-  then []
-  else let val uni = unique(tl x)
-       in
-     if notIn(hd x, uni)
-     then (hd x)::uni
-     else uni
-       end
-     
-       
-  in
-      let val unique_month = unique(months)
-      in dates_in_months(dates, unique_month)
-      end          
-  end
+fun remove_card(cs, c, e) =
+        let fun remove_card_helper(xs, acc) =
+                        case xs of
+                                [] => raise e
+                                | x::xs' => if x = c
+                                                        then acc @ xs'
+                                                        else remove_card_helper(xs', x ::acc)
+        in
+                remove_card_helper(cs, [])
+        end;
 
 
+fun all_same_color(cs) =
+        case cs of
+                [] => true
+                | c::[] => true
+                | c::cn::cs' => card_color(c) = card_color(cn)
+                                                andalso all_same_color(cn::cs');
 
-fun reasonable_date(date: (int * int * int)) =
-  (* check positive number and month range *)
-  if (#1 date) > 0 andalso (#2 date) > 0 andalso (#3 date) > 0 andalso (#2 date) < 13
-  then
-      let
-    fun get_nth_int (days : int list, n: int) =
-      if n = 1
-      then hd days
-      else get_nth_int(tl days, n - 1)
 
-    val NUM_DAYS = [32,29,32,31,32,31,32,32,31,32,31,32]
-    val max_days = get_nth_int(NUM_DAYS, (#2 date))
-    fun isLeap(year: int) =
-      (year mod 400) = 0 orelse ((year mod 4) = 0 andalso not((year mod 100) = 0))
-      in
-    if (#2 date) = 2
-    (* test if day max out for Feb *)
-    then
-        if isLeap((#1 date))
-        then (#3 date) < (max_days + 1) 
-        else (#3 date) < max_days
-      
-    (* test if day max out for other month *) 
-    else (#3 date) < max_days
-        
-      end      
-      
-  else false
-      
+fun sum_cards(cs) =
+        let fun sum_cards_helper(cs, acc) =
+                        case cs of
+                                [] => acc
+                                | c::cs' => sum_cards_helper(cs', card_value(c) + acc)
+        in
+                sum_cards_helper(cs, 0)
+        end;
+
+
+fun score(cs, goal) =
+        let val sumCards = sum_cards(cs)
+                val preliminaryScore = if sumCards > goal
+                                                             then 3 * (sumCards - goal)
+                                                             else goal - sumCards
+        in
+                if all_same_color(cs)
+                then preliminaryScore div 2
+                else preliminaryScore
+        end;
+
+
+fun officiate (cs, moves, goal) =
+        let fun officiate_helper (cards, moves, cards_held, current_score) =
+                        case (cards, moves, sum_cards(cards_held) > goal) of
+                                 (_, _, true) => current_score
+                             | (_, [], _) => current_score
+                             | ([], Draw::_, _) => current_score
+                             | (card::cards', Draw::m', _) => officiate_helper(cards', m', card::cards_held, score(card::cards_held, goal))
+                             | (cards, Discard c:: m', _) =>
+                                             let val cards_held' = remove_card(cards_held, c, IllegalMove)
+                                             in
+                                                     officiate_helper(cards, m', cards_held', score(cards_held', goal))
+                                             end
+        in
+                officiate_helper(cs, moves, [], score([], goal))
+        end;

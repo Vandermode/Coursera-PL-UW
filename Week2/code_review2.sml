@@ -1,172 +1,186 @@
-(* problem 1 *)
-fun is_older (date1: int*int*int, date2: int*int*int) =
-  if (#1 date1) < (#1 date2)
-  then true
-  else if (#1 date1) > (#1 date2)
-       then false
-       else if (#2 date1) < (#2 date2)
-            then true
-            else if (#2 date1) > (#2 date2)
-                  then false
-                  else if (#3 date1) < (#3 date2)
-                  then true
-                  else false
-(* problem 2 *)
-fun number_in_month1 ( dates : (int*int*int) list, x : int, z : int) = 
-    if null dates
-    then z
-    else if x = #2 (hd dates)
-         then number_in_month1 (tl dates, x, z+1)
-         else number_in_month1(tl dates, x, z)
-         
-(* main *)    
-fun number_in_month (dates : (int*int*int) list, x :int) = 
-    number_in_month1 (dates, x, 0)
+(* Dan Grossman, Coursera PL, HW2 Provided Code *)
 
-(* problem 3 *)
-fun number_in_months1 (dates : (int*int*int) list, x : int list, z : int) = 
-    if null x
-    then z
-    else number_in_month1(dates, hd x, z) + number_in_months1(dates, tl x, z)
-    
-(* main *)    
-fun number_in_months (dates : (int*int*int) list, x : int list) = 
-    number_in_months1 (dates, x, 0)
+(* if you use this function to compare two strings (returns true if the same
+     string), then you avoid several of the functions in problem 1 having
+     polymorphic types that may be confusing *)
+fun same_string(s1 : string, s2 : string) =
+        s1 = s2
 
+(* put your solutions for problem 1 here *)
 
-(* problem 4 *)
-fun dates_in_month1 (dates : (int*int*int) list, month : int, match_dates : (int*int*int) list) = 
-    if null dates 
-    then match_dates
-    else if month = #2 (hd dates)
-         then dates_in_month1 (tl dates, month, (hd dates)::match_dates)
-         else   dates_in_month1 (tl dates, month, match_dates)
-         
-fun reverse (x : (int*int*int) list, y : (int*int*int) list) = 
-        if null x
-        then y
-        else reverse (tl x, (hd x)::y)
+fun all_except_option(str: string, lst: string list) = 
+    let fun aux(left: string list, right: string list) =
+            case right of
+                    []      => NONE
+                | h::rest => if same_string(str, h)
+                             then SOME(left@rest)
+                             else aux(left@[h], rest)
+    in  aux([], lst) end
         
-(* main *)
-fun dates_in_month (dates : (int*int*int) list, month :int) = 
-    reverse (dates_in_month1(dates, month, []), [])
+fun get_substitutions1(substitutions: string list list, str: string) =
+    case substitutions of
+            []      => []
+        | h::rest => let val r = case all_except_option(str, h) of
+                            NONE    => []
+                        | SOME(l) => l
+                     in r @ get_substitutions1(rest, str) end 
     
-(* problem 5 *)   
-fun dates_in_months1 (dates : (int*int*int) list, months : int list, match_dates : (int*int*int) list) = 
-    if null months
-    then match_dates
-    else dates_in_months1(dates, tl months, dates_in_month(dates, hd months)@match_dates)
+fun get_substitutions2(substitutions: string list list, str: string) =
+    let fun aux(slst: string list list, ans: string list) =
+        case slst of
+            [] => ans
+            | h::rest => let val r = case all_except_option(str, h) of
+                                NONE    => []
+                            | SOME(l) => l
+                         in aux(rest, ans @ r) end          
+    in aux(substitutions, [])  end
     
-(* main *)
-fun dates_in_months (dates : (int*int*int) list, months : int list) = 
-    reverse (dates_in_months1(dates, months,[]), [])
+type name = {first: string, middle: string, last: string}
 
-(* problem 6 *)
-fun get_nth (string_list : string list, n : int) = 
-    if n = 1
-    then hd string_list
-    else get_nth (tl string_list, n-1)
+fun similar_names(substitutions: string list list, namae: name) =
+    let val {first = f, middle = m, last = l} = namae
+        fun aux(ans: name list, firstnames: string list) =
+            case firstnames of
+                    []      => ans
+                | h::rest => aux({first = h, middle = m, last = l}::ans, rest)
+    in namae::aux([],get_substitutions2(substitutions, f)) end
+    
 
-(* problem 7 *)
-fun date_to_string (date : (int*int*int)) = 
-    get_nth ( ["January", "February", "March", "April",
-"May", "June", "July", "August", "September", "October", "November", "December"], #2 date) ^ " " ^ Int.toString (#3 date) ^ ", " ^ Int.toString (#1 date)
+(* you may assume that Num is always used with values 2, 3, ..., 10
+     though it will not really come up *)
+datatype suit = Clubs | Diamonds | Hearts | Spades
+datatype rank = Jack | Queen | King | Ace | Num of int 
+type card = suit * rank
 
-(* problem 8 *)
-fun number_before_reaching_sum1 (sum : int, n : int list, y : int) = 
-    if sum-(hd n) <= 0
-    then y
-    else number_before_reaching_sum1(sum - (hd n), tl n, y+1)
+datatype color = Red | Black
+datatype move = Discard of card | Draw 
 
-(* main *)
-fun number_before_reaching_sum (sum : int, n : int list) = 
-    number_before_reaching_sum1(sum, n, 0)
+exception IllegalMove
 
-(* problem 9 *)
-fun what_month (n : int) = 
-    number_before_reaching_sum (n, [31,28,31,30,31,30,31,31,30,31,30,31]) + 1
-    
-(* problem 10 *)
-fun month_range1 (a : int, b : int, c : int list) =
-    if b-a < 0
-    then c
-    else month_range1 (a+1, b, what_month(a)::c)
-    
-fun reverse1 (x : int list, y : int list) = 
-        if null x
-        then y
-        else reverse1 (tl x, (hd x)::y)
+(* put your solutions for problem 2 here *)
 
-(* main *)    
-fun month_range (a : int, b :int) = 
-    reverse1 (month_range1(a ,b, []),[])
+fun card_color((su, _): card) = 
+    case su of
+            Spades   => Black
+        | Clubs    => Black
+        | Diamonds => Red
+        | Hearts   => Red
 
-(* problem 11 *)
-fun older (date1: int*int*int, date2: int*int*int) = 
-    if is_older (date1, date2)
-    then date1
-    else date2
-    
-    
-fun oldest1 (dates : (int*int*int) list, date : (int*int*int)) = 
-    if null dates
-    then SOME (date)
-    else if date = (0,0,0)
-         then oldest1 (tl dates, older((hd dates), hd dates))
-         else oldest1 (tl dates, older((hd dates), date))
-         
-(* main *)        
-fun oldest (dates : (int*int*int) list) = 
-    if null dates
-    then NONE
-    else oldest1 (dates, (0,0,0))
-    
-    
-(* problem 12 *)   
-fun is_duplicates (x : int, list1 : int list) = 
-    if null list1
-    then true
-    else if x <> hd list1
-         then is_duplicates (x, tl list1)
-         else false 
-    
-fun remove_duplicates (list1 : int list, list2 : int list) =
-    if null list1 
-    then list2
-    else if is_duplicates (hd list1, tl list1)
-         then remove_duplicates (tl list1, (hd list1)::list2)
-         else remove_duplicates (tl list1, list2)
-         
-(* main *)
-fun number_in_months_challenge (dates : (int*int*int) list, x : int list) = 
-    number_in_months (dates, reverse1 (remove_duplicates (x,[]),[]))
-    
-    
-fun dates_in_months_challenge(dates : (int*int*int) list, months :int list) = 
-    dates_in_months (dates, reverse1 (remove_duplicates (months,[]),[]))   
-    
-    
-(* problem 13 *)
-fun is_leap_year (year : int) = 
-    if (year mod 4 = 0 andalso year mod 100 <> 0) orelse (year mod 400 = 0)
-    then true 
-    else false
+fun card_value((_, ra): card) =
+    case ra of
+            Num(i) => i
+        | Ace    => 11
+        | _      => 10
+        
+fun remove_card(cs: card list, c: card, e: exn) =
+    let fun aux(clst: card list, ans: card list) = 
+            case clst of
+                    []       => raise e
+                | hd::rest => if hd = c
+                                then ans @ rest
+                                else aux(rest, ans @ [hd])
+    in aux(cs, []) end
 
-fun day_in_month (month : int, day_in_months) = 
-    if month = 1
-    then hd day_in_months
-    else day_in_month(month - 1, tl day_in_months)    
+fun all_same_color(cs: card list) = 
+    case cs of
+            []         => true
+        | f::[]      => true
+        | f::s::rest => if card_color(f) = card_color(s)
+                            then all_same_color(s::rest)
+                            else false
+                        
+fun sum_cards(cs: card list) = 
+    let fun aux(clst: card list, ans: int) =
+            case clst of
+                    []       => ans
+                | hd::rest => aux(rest, card_value(hd) + ans) 
+    in aux(cs, 0) end
     
-(* main *)    
-fun reasonable_date (date : (int*int*int)) = 
-    if (#1 date) > 0
-    then if (#2 date) < 13 andalso (#2 date) > 0
-         then if is_leap_year (#1 date)
-              then if (#3 date) <= day_in_month ((#2 date), [31,29,31,30,31,30,31,31,30,31,30,31]) andalso (#3 date) > 0
-                    then true
-                    else false
-               else if (#3 date) <= day_in_month ((#2 date), [31,28,31,30,31,30,31,31,30,31,30,31]) andalso (#3 date) > 0
-                    then true
-                    else false
-         else false
-    else false
+fun score(held_cards: card list, goal: int) =
+    let
+        val sum = sum_cards(held_cards)
+        val preliminary_score = if sum > goal then 3*(sum - goal) else goal - sum
+    in
+        if all_same_color(held_cards)
+        then preliminary_score div 2
+        else preliminary_score
+    end
+
+fun officiate(cards: card list, moves: move list, goal: int) = 
+    let fun next(held_cards: card list, crds: card list,  mvs: move list) =
+        case mvs of
+                []               => score(held_cards, goal)
+            | Discard(c)::rest => next(remove_card(held_cards, c, IllegalMove), crds, rest)
+            | Draw::rest       => case crds of
+                                        []        => score(held_cards, goal)
+                                    | cd::restc => let
+                                                        val held = cd::held_cards
+                                                        val s = sum_cards(held)
+                                                     in
+                                                        if s > goal
+                                                        then score(held, goal)
+                                                        else next(held, restc, rest)
+                                                     end
+    in next([], cards, moves) end
+    
+    
+(* Challenge Problems (a) *)
+
+fun count_Ace(held_cards: card list) =
+    let fun aux(hc: card list, sum: int) =
+            case hc of
+                    []           => sum
+                | (_, h)::rest => case h of
+                                    Ace => aux(rest, sum + 1)
+                                    | _ => aux(rest, sum)
+    in aux(held_cards, 0) end
+
+fun score_challenge(held_cards: card list, goal: int) =
+    let
+        fun adjust(sum: int, cnt: int) =
+            let val delta = (sum-goal) div 10
+            in 
+                if sum <= goal then sum
+                else if  delta >= cnt then sum - cnt*10
+                else if 3*(sum - delta*10 - goal) < goal - (sum - (delta + 1)*10)
+                then sum - delta*10
+                else sum - (delta + 1)*10
+            end
+        val sum = adjust(sum_cards(held_cards), count_Ace(held_cards))
+        val preliminary_score = if sum > goal then 3*(sum - goal) else goal - sum
+    in
+        if all_same_color(held_cards)
+        then preliminary_score div 2
+        else preliminary_score
+    end
+
+fun officiate_challenge(cards: card list, moves: move list, goal: int) = 
+    let fun next(held_cards: card list, crds: card list,  mvs: move list) =
+        case mvs of
+                []               => score_challenge(held_cards, goal)
+            | Discard(c)::rest => next(remove_card(held_cards, c, IllegalMove), crds, rest)
+            | Draw::rest       => case crds of
+                                        []        => score_challenge(held_cards, goal)
+                                    | cd::restc => let
+                                                        val held = cd::held_cards
+                                                        val s = sum_cards(held)
+                                                     in
+                                                        if s - count_Ace(held_cards)*10 > goal
+                                                        then score_challenge(held, goal)
+                                                        else next(held, restc, rest)
+                                                     end
+    in next([], cards, moves) end 
+    
+(* Challenge Problems (b) *)
+(*
+fun careful_player(cards: card list, goal: int) = 
+    let 
+        fun next(held_cards: card list, crds: card list, mvs: move list) =
+            if score(held_cards, goal) = 0 then mvs
+            else case crds of
+                    []         => mvs@[Draw]
+                    | cd::rest => if goal > sum_cards(held_cards) + 10
+                                    then next(held_cards@[cd], rest, mvs@[Draw])
+                                    else next(tl held_cards, rest, mvs@[Discard(hd held_cards)])
+    in next([], cards, []) end
+    *)

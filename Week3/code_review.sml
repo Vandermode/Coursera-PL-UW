@@ -1,164 +1,139 @@
-(* Dan Grossman, Coursera PL, HW2 Provided Code *)
+(* Coursera Programming Languages, Homework 3, Provided Code *)
 
-(* if you use this function to compare two strings (returns true if the same
-   string), then you avoid several of the functions in problem 1 having
-   polymorphic types that may be confusing *)
-fun same_string(s1 : string, s2 : string) =
-    s1 = s2
+exception NoAnswer
 
+datatype pattern = Wildcard
+    | Variable of string
+    | UnitP
+    | ConstP of int
+    | TupleP of pattern list
+    | ConstructorP of string * pattern
 
-(* put your solutions for problem 1 here *)
+datatype valu = Const of int
+    | Unit
+    | Tuple of valu list
+    | Constructor of string * valu
 
-fun all_except_option(str, [])    = NONE
-  | all_except_option(str, s::ss) =
-    if same_string(s, str)
-    then SOME ss
-    else case all_except_option(str, ss) of
-              NONE     => NONE
-            | SOME ss' => SOME (s::ss')
+fun g f1 f2 p =
+    let 
+        val r = g f1 f2 
+    in
+        case p of
+            Wildcard          => f1 ()
+            | Variable x        => f2 x
+            | TupleP ps         => List.foldl (fn (p,i) => (r p) + i) 0 ps
+            | ConstructorP(_,p) => r p
+            | _                 => 0
+    end
 
+(**** for the challenge problem only ****)
 
-fun get_substitutions1([], _)      = []
-  | get_substitutions1(ss::sss, s) =
-    case all_except_option(s, ss) of
-        NONE     => get_substitutions1(sss, s)
-      | SOME ss' => ss' @ get_substitutions1(sss, s)
+datatype typ = Anything
+    | UnitT
+    | IntT
+    | TupleT of typ list
+    | Datatype of string
 
+(**** you can put all your code here ****)
+                                     
+(* 1 *)
+fun only_capitals (sl : string list) =
+    List.filter (fn s => Char.isUpper(String.sub(s, 0)))
+                    sl
 
-fun get_substitutions2(sss, s) =
-  let
-    fun loop([], acc)      = acc
-      | loop(ss::sss, acc) =
-        case all_except_option(s, ss) of
-             NONE     => loop(sss, acc)
-           | SOME ss' => loop(sss, acc @ ss')
-  in
-    loop(sss, [])
-  end
+(* 2 *)
+fun longest_string1 (sl : string list) = 
+    List.foldl (fn (x, re) => if String.size(x) > String.size(re)
+                                    then x
+                                    else re)
+                 ""
+                 sl
 
+(* 3 *)
+fun longest_string2 (sl : string list) =
+    List.foldl (fn (x, re) => if String.size(x) >= String.size(re)
+                                    then x
+                                    else re)
+                 ""
+                 sl
+(* 4 *)
+fun longest_string_helper f =
+    List.foldl (fn (x, re) => if f(String.size(x), String.size(re))
+                                then x
+                                else re)
+                 ""
+                 
+val longest_string3 = longest_string_helper (fn (x, y) => x > y)
+                                                
+val longest_string4 = longest_string_helper (fn (x, y) => x >= y)
 
-fun similar_names(sss, fullname as {first = first, middle = middle, last = last}) =
-  let
-    fun loop([])    = []
-      | loop(s::ss) = {first = s, middle = middle, last = last}::loop(ss)
-  in
-    fullname :: loop(get_substitutions2(sss, first))
-  end
+(* 5 *)
+val longest_capitalized = longest_string1 o only_capitals
 
+(* 6 *)
+val rev_string = String.implode o List.rev o String.explode
 
-(* you may assume that Num is always used with values 2, 3, ..., 10
-   though it will not really come up *)
-datatype suit = Clubs | Diamonds | Hearts | Spades
-datatype rank = Jack | Queen | King | Ace | Num of int
-type card = suit * rank
+(* 7 *)
+fun first_answer f lst =
+    case lst of
+            [] => raise NoAnswer
+        | x::xs => case f x of
+                     NONE => first_answer f xs
+                 | SOME v => v 
+    
+(* 8 *)
+fun all_answers f lst = 
+    let fun loop (acc, []) = SOME acc
+        | loop (acc, x::xs) = case f x of
+                                    NONE => NONE
+                                | SOME l => loop(acc @ l, xs)
+    in
+            loop([], lst)
+    end
+        
+(* 9a *)
+val count_wildcards = g (fn _ => 1) (fn _ => 0)
 
-datatype color = Red | Black
-datatype move = Discard of card | Draw
+(* 9b *)
+val count_wild_and_variable_lengths = g (fn _ => 1) String.size
 
-exception IllegalMove
+(* 9c *)
+fun count_some_var (s : string, p : pattern) =
+    g (fn _ => 0) (fn var => if var = s then 1 else 0) p
 
-(* put your solutions for problem 2 here *)
+(* 10 *)
+fun check_pat (p : pattern) =
+    let fun pattern_to_list (pat) =
+        case pat of
+                Variable x        => [x]
+            | TupleP ps         => List.foldl (fn (p,i) => (pattern_to_list p) @ i) [] ps
+            | ConstructorP (_, p) => pattern_to_list p
+            | _                 => []
 
-fun card_color((Clubs | Spades), _)    = Black
-  | card_color((Diamonds | Hearts), _) = Red
+            fun has_repeats (lst : string list) =
+        case lst of
+                [] => false 
+            | x::xs => (List.exists (fn s => x = s) xs)
+                         orelse has_repeats(xs)
+    in
+            (not o has_repeats o pattern_to_list) p
+    end
 
+(* 11 *)
+fun match (v : valu, p : pattern) =
+    case (v, p) of
+            (_, Wildcard) => SOME []
+        | (_, Variable s) => SOME [(s, v)]
+        | (Unit, UnitP) => SOME []
+        | (Const iv, ConstP ip) => if iv = ip then SOME [] else NONE
+        | (Tuple tv, TupleP tp) => if List.length(tv) = List.length(tp)
+                                                then all_answers match (ListPair.zip(tv, tp))
+                                                else NONE
+        | (Constructor(s2, cv), ConstructorP(s1, cp)) => if s1 = s2    
+                                                                                    then match(cv, cp)
+                                                                                    else NONE
+        | _ => NONE 
 
-fun card_value(_, (King | Queen | Jack))  = 10
-  | card_value(_, Ace)                    = 11
-  | card_value(_, Num n)                  = n
-
-
-fun remove_card([], _, ex)           = raise ex
-  | remove_card(c::cs, c': card, ex) = if c = c' then cs else c::remove_card(cs, c', ex)
-
-
-fun all_same_color([] | [_])            = true
-  | all_same_color(c1::(cs' as c2::cs)) =
-    card_color(c1) = card_color(c2) andalso all_same_color(cs')
-
-
-fun sum_cards(cs) =
-  let
-    fun loop([], acc)    = acc
-      | loop(c::cs, acc) = loop(cs, acc + card_value(c))
-  in
-    loop(cs, 0)
-  end
-
-
-fun score(cs, goal) =
-  let
-    val score = sum_cards cs
-  in
-    case (all_same_color(cs), score > goal) of
-         (true, true)   => (3 * (score - goal)) div 2
-       | (true, false)  => (goal - score) div 2
-       | (false, true)  => 3 * (score - goal)
-       | (false, false) => goal - score
-  end
-
-
-fun officiate(cs, ms, goal) =
-  let
-    fun loop((_, [], hcs) | ([], Draw::_, hcs)) = score(hcs, goal)
-      | loop (cs, (Discard c)::ms, hcs)         = loop(cs, ms, remove_card(hcs, c, IllegalMove))
-      | loop(c::cs, Draw::ms, hcs)              =
-        if sum_cards(c::hcs) > goal then score(c::hcs, goal) else loop(cs, ms, c::hcs)
-  in
-    loop(cs, ms, [])
-  end
-
-
-(* CHALLENGE PROBLEMS *)
-
-fun score_challenge(cs, goal) =
-  let
-    fun loop([], _, best_score)                 = best_score
-      | loop((color, Ace)::cs, csm, best_score) =
-        let
-          val csm = (color, Num 1)::csm
-          val new_score = score(csm @ cs, goal)
-        in
-          loop(cs, csm, Int.min(new_score, best_score))
-        end
-      | loop(c::cs, csm, best_score)           = loop(cs, c::csm, best_score)
-  in
-    loop(cs, [], score(cs, goal))
-  end
-
-
-fun officiate_challenge(cs, ms, goal) =
-  let
-    fun sum_cards([])           = 0
-      | sum_cards((_, Ace)::cs) = 1 + sum_cards(cs)
-      | sum_cards(c::cs)        = card_value(c) + sum_cards(cs)
-
-    fun loop((_, [], hcs) | ([], Draw::_, hcs)) = score_challenge(hcs, goal)
-      | loop(cs, (Discard c)::ms, hcs)          = loop(cs, ms, remove_card(hcs, c, IllegalMove))
-      | loop(c::cs, Draw::ms, hcs)              =
-        if sum_cards(c::hcs) > goal then score_challenge(c::hcs, goal) else loop(cs, ms, c::hcs)
-  in
-    loop(cs, ms, [])
-  end
-
-
-fun careful_player(cs, goal) =
-  let
-
-    fun cheat(phs, [], c)    = NONE
-      | cheat(phs, h::hs, c) =
-        if score(c::(phs @ hs), goal) = 0 then SOME h else cheat(h::phs, hs, c)
-
-    fun next_move(ms, cs) =
-      if score(ms, goal) = 0 then [] else pick_move(ms, cs)
-
-    and pick_move(ms, []) = if sum_cards(ms) + 10 < goal then Draw::next_move(ms, cs) else []
-      | pick_move(ms, c::cs) =
-        case cheat([], ms, c) of
-             NONE   => if sum_cards(ms) + 10 < goal orelse sum_cards(c::ms) <= goal
-                       then Draw::next_move(c::ms, cs)
-                       else []
-           | SOME h => [Discard h, Draw]
-  in
-    next_move([], cs)
-  end
+(* 12 *)
+fun first_match v pl =
+    SOME (first_answer (fn p => match(v, p)) pl) handle NoAnswer => NONE
